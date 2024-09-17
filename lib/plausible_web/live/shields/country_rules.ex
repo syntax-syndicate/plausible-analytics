@@ -149,16 +149,21 @@ defmodule PlausibleWeb.Live.Shields.CountryRules do
                     </span>
                   </td>
                   <td class="px-6 py-4 text-sm font-medium text-right">
-                    <button
-                      id={"remove-country-rule-#{rule.id}"}
-                      phx-target={@myself}
-                      phx-click="remove-country-rule"
-                      phx-value-rule-id={rule.id}
-                      class="text-sm text-red-600"
-                      data-confirm="Are you sure you want to revoke this rule?"
-                    >
-                      Remove
-                    </button>
+                    <PlausibleWeb.Components.Generic.tooltip align="right">
+                      <:tooltip_content>
+                        Added at <%= format_added_at(rule.inserted_at, @site.timezone) %> by <%= rule.added_by %>
+                      </:tooltip_content>
+                      <button
+                        id={"remove-country-rule-#{rule.id}"}
+                        phx-target={@myself}
+                        phx-click="remove-country-rule"
+                        phx-value-rule-id={rule.id}
+                        class="text-sm text-red-600"
+                        data-confirm="Are you sure you want to revoke this rule?"
+                      >
+                        Remove
+                      </button>
+                    </PlausibleWeb.Components.Generic.tooltip>
                   </td>
                 </tr>
               <% end %>

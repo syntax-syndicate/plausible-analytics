@@ -336,6 +336,7 @@ defmodule PlausibleWeb.Components.Generic do
   end
 
   attr :sticky?, :boolean, default: true
+  attr :align, :string, default: "left"
   slot :inner_block, required: true
   slot :tooltip_content, required: true
 
@@ -345,14 +346,29 @@ defmodule PlausibleWeb.Components.Generic do
 
     show_inner = if assigns[:sticky?], do: "hovered || sticky", else: "hovered"
 
-    assigns = assign(assigns, wrapper_data: wrapper_data, show_inner: show_inner)
+    align_class =
+      if assigns.align == "left" do
+        "left-0"
+      else
+        "right-0"
+      end
+
+    assigns =
+      assign(assigns,
+        wrapper_data: wrapper_data,
+        show_inner: show_inner,
+        align_class: align_class
+      )
 
     ~H"""
     <div x-data={@wrapper_data} class="tooltip-wrapper w-full relative">
       <div
         x-cloak
         x-show={@show_inner}
-        class="tooltip-content z-[1000] bg-gray-900 rounded text-white absolute bottom-24 sm:bottom-7 left-0 sm:w-72 p-4 text-sm font-medium"
+        class={[
+          "tooltip-content z-[1000] bg-gray-900 rounded text-white absolute bottom-[120%] sm:bottom-7 sm:w-72 p-4 text-sm font-medium",
+          @align_class
+        ]}
         x-transition:enter="transition ease-out duration-200"
         x-transition:enter-start="opacity-0"
         x-transition:enter-end="opacity-100"
