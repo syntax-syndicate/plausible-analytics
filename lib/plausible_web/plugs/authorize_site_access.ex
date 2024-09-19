@@ -10,22 +10,27 @@ defmodule PlausibleWeb.Plugs.AuthorizeSiteAccess do
 
   @all_roles [:public, :viewer, :admin, :super_admin, :owner]
 
-  def init([]), do: @all_roles
+  def all_roles(), do: @all_roles
 
-  def init(allowed_roles) do
+  def init(opts) do
+    allowed_roles = Keyword.get(opts, :allowed_roles, @all_roles)
+    site_param = Keyword.fetch!(opts, :site_param)
     unknown_roles = allowed_roles -- @all_roles
 
     if unknown_roles != [] do
       raise ArgumentError, "Unknown allowed roles configured: #{inspect(unknown_roles)}"
     end
 
-    allowed_roles
+    %{site_param: site_param, allowed_roles: allowed_roles}
   end
 
-  def call(conn, allowed_roles) do
+  def call(conn, %{site_param: site_param, allowed_roles: allowed_roles}) do
     current_user = conn.assigns[:current_user]
 
-    with {:ok, %{site: site, role: membership_role}} <- get_site_with_role(conn, current_user),
+    domain = get_domain(conn, site_param)
+
+    with {:ok, %{site: site, role: membership_role}} <-
+           get_site_with_role(conn, current_user, domain),
          {:ok, shared_link} <- maybe_get_shared_link(conn, site) do
       role =
         cond do
@@ -63,13 +68,19 @@ defmodule PlausibleWeb.Plugs.AuthorizeSiteAccess do
     end
   end
 
-  defp get_site_with_role(conn, current_user) do
-    # addition is flimsy, do we need an extra argument on plug init to control where we look for the domain?
-    domain =
-      conn.path_params["domain"] || conn.path_params["website"] ||
-        (conn.method == "POST" && conn.path_info == ["api", "docs", "query"] &&
-           conn.params["site_id"])
+  defp get_domain(conn, {:path, param}) when is_atom(param) do
+    conn.path_params[Atom.to_string(param)]
+  end
 
+  defp get_domain(conn, param) when is_atom(param) do
+    conn.params[Atom.to_string(param)]
+  end
+
+  defp get_domain(_conn, _) do
+    raise ArgumentError, "site_param must be either {:path, param_atom} or param_atom"
+  end
+
+  defp get_site_with_role(conn, current_user, domain) when is_binary(domain) do
     site_query =
       from(
         s in Plausible.Site,
@@ -94,6 +105,10 @@ defmodule PlausibleWeb.Plugs.AuthorizeSiteAccess do
       %{site: _site} = result -> {:ok, result}
       _ -> error_not_found(conn)
     end
+  end
+
+  defp get_site_with_role(conn, _current_user, _domain) do
+    error_not_found(conn)
   end
 
   defp maybe_get_shared_link(conn, site) do

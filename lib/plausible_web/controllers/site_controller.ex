@@ -6,12 +6,14 @@ defmodule PlausibleWeb.SiteController do
   alias Plausible.Sites
   alias Plausible.Billing.Quota
 
-  plug(PlausibleWeb.RequireAccountPlug)
+  plug PlausibleWeb.RequireAccountPlug
 
-  plug(
-    PlausibleWeb.Plugs.AuthorizeSiteAccess,
-    [:owner, :admin, :super_admin] when action not in [:new, :create_site]
-  )
+  plug PlausibleWeb.Plugs.AuthorizeSiteAccess,
+       [
+         site_param: {:path, :website},
+         allowed_roles: [:owner, :admin, :super_admin]
+       ]
+       when action not in [:new, :create_site]
 
   def new(conn, params) do
     flow = params["flow"] || PlausibleWeb.Flows.register()

@@ -6,7 +6,19 @@ defmodule PlausibleWeb.Plugs.AuthorizeSiteAccessTest do
 
   test "init rejects invalid role names" do
     assert_raise ArgumentError, fn ->
-      AuthorizeSiteAccess.init(_allowed_roles = [:admin, :invalid])
+      AuthorizeSiteAccess.init(site_param: :domain, allowed_roles: [:admin, :invalid])
+    end
+  end
+
+  test "init rejects invalid site_param format" do
+    assert_raise ArgumentError, fn ->
+      AuthorizeSiteAccess.init(site_param: "wrong", allowed_roles: [:admin, :invalid])
+    end
+  end
+
+  test "init crashes on missing site param" do
+    assert_raise KeyError, fn ->
+      AuthorizeSiteAccess.init(allowed_roles: [:admin])
     end
   end
 
@@ -15,7 +27,10 @@ defmodule PlausibleWeb.Plugs.AuthorizeSiteAccessTest do
       conn
       |> bypass_through(PlausibleWeb.Router)
       |> get("/invalid.domain")
-      |> AuthorizeSiteAccess.call(_all_allowed_roles = [])
+      |> AuthorizeSiteAccess.call(%{
+        site_param: {:path, :domain},
+        allowed_roles: [:admin, :owner]
+      })
 
     assert conn.halted
     assert html_response(conn, 404)
@@ -28,7 +43,10 @@ defmodule PlausibleWeb.Plugs.AuthorizeSiteAccessTest do
       conn
       |> bypass_through(PlausibleWeb.Router)
       |> get("/#{site.domain}")
-      |> AuthorizeSiteAccess.call(_all_allowed_roles = [])
+      |> AuthorizeSiteAccess.call(%{
+        site_param: {:path, :domain},
+        allowed_roles: [:admin, :owner]
+      })
 
     assert conn.halted
     assert html_response(conn, 404)
@@ -47,7 +65,10 @@ defmodule PlausibleWeb.Plugs.AuthorizeSiteAccessTest do
         "domain" => site.domain,
         "website" => site.domain
       })
-      |> AuthorizeSiteAccess.call(_allowed_roles = [:admin, :owner])
+      |> AuthorizeSiteAccess.call(%{
+        site_param: {:path, :domain},
+        allowed_roles: [:admin, :owner]
+      })
 
     assert conn.halted
     assert html_response(conn, 404)
@@ -67,7 +88,10 @@ defmodule PlausibleWeb.Plugs.AuthorizeSiteAccessTest do
         "domain" => site.domain,
         "website" => site.domain
       })
-      |> AuthorizeSiteAccess.call(_allowed_roles = [:admin, :owner])
+      |> AuthorizeSiteAccess.call(%{
+        site_param: {:path, :website},
+        allowed_roles: [:admin, :owner]
+      })
 
     assert conn.halted
     assert conn.status == 404
@@ -81,7 +105,10 @@ defmodule PlausibleWeb.Plugs.AuthorizeSiteAccessTest do
       conn
       |> bypass_through(PlausibleWeb.Router)
       |> get("/api/stats/#{site.domain}/main-graph")
-      |> AuthorizeSiteAccess.call([:admin, :owner, :super_admin])
+      |> AuthorizeSiteAccess.call(%{
+        site_param: {:path, :domain},
+        allowed_roles: [:admin, :owner, :super_admin]
+      })
 
     assert conn.halted
 
@@ -102,7 +129,10 @@ defmodule PlausibleWeb.Plugs.AuthorizeSiteAccessTest do
       conn
       |> bypass_through(PlausibleWeb.Router)
       |> put("/sites/#{site.domain}/shared-links/#{shared_link_other_site.slug}", params)
-      |> AuthorizeSiteAccess.call(_allowed_roles = [:super_admin, :admin, :owner])
+      |> AuthorizeSiteAccess.call(%{
+        site_param: {:path, :website},
+        allowed_roles: [:super_admin, :admin, :owner]
+      })
 
     assert conn.halted
     assert conn.status == 404
@@ -121,7 +151,10 @@ defmodule PlausibleWeb.Plugs.AuthorizeSiteAccessTest do
       conn
       |> bypass_through(PlausibleWeb.Router)
       |> get("/#{other_site.domain}", %{"auth" => shared_link.slug})
-      |> AuthorizeSiteAccess.call(_all_allowed_roles = [])
+      |> AuthorizeSiteAccess.call(%{
+        site_param: {:path, :domain},
+        allowed_roles: AuthorizeSiteAccess.all_roles()
+      })
 
     assert conn.halted
     assert conn.status == 404
@@ -144,7 +177,10 @@ defmodule PlausibleWeb.Plugs.AuthorizeSiteAccessTest do
       conn
       |> bypass_through(PlausibleWeb.Router)
       |> put("/sites/#{site.domain}/shared-links/#{shared_link_other_site.slug}", params)
-      |> AuthorizeSiteAccess.call(_allowed_roles = [:super_admin, :admin, :owner])
+      |> AuthorizeSiteAccess.call(%{
+        site_param: {:path, :website},
+        allowed_roles: [:super_admin, :admin, :owner]
+      })
 
     assert conn.halted
     assert conn.status == 404
@@ -158,7 +194,7 @@ defmodule PlausibleWeb.Plugs.AuthorizeSiteAccessTest do
       conn
       |> bypass_through(PlausibleWeb.Router)
       |> get("/#{site.domain}")
-      |> AuthorizeSiteAccess.call(_all_allowed_roles = [:owner])
+      |> AuthorizeSiteAccess.call(%{site_param: {:path, :domain}, allowed_roles: [:owner]})
 
     assert conn.halted
     assert html_response(conn, 404)
@@ -173,7 +209,10 @@ defmodule PlausibleWeb.Plugs.AuthorizeSiteAccessTest do
         conn
         |> bypass_through(PlausibleWeb.Router)
         |> get("/#{site.domain}")
-        |> AuthorizeSiteAccess.call(_all_allowed_roles = [unquote(role)])
+        |> AuthorizeSiteAccess.call(%{
+          site_param: {:path, :domain},
+          allowed_roles: [unquote(role)]
+        })
 
       refute conn.halted
       assert conn.assigns.site.id == site.id
@@ -191,7 +230,7 @@ defmodule PlausibleWeb.Plugs.AuthorizeSiteAccessTest do
       conn
       |> bypass_through(PlausibleWeb.Router)
       |> get("/#{site.domain}")
-      |> AuthorizeSiteAccess.call(_all_allowed_roles = [:super_admin])
+      |> AuthorizeSiteAccess.call(%{site_param: {:path, :domain}, allowed_roles: [:super_admin]})
 
     refute conn.halted
     assert conn.assigns.site.id == site.id
@@ -205,7 +244,7 @@ defmodule PlausibleWeb.Plugs.AuthorizeSiteAccessTest do
       conn
       |> bypass_through(PlausibleWeb.Router)
       |> get("/#{site.domain}")
-      |> AuthorizeSiteAccess.call(_all_allowed_roles = [:public])
+      |> AuthorizeSiteAccess.call(%{site_param: {:path, :domain}, allowed_roles: [:public]})
 
     refute conn.halted
     assert conn.assigns.site.id == site.id
@@ -218,7 +257,7 @@ defmodule PlausibleWeb.Plugs.AuthorizeSiteAccessTest do
       build_conn()
       |> bypass_through(PlausibleWeb.Router)
       |> get("/#{site.domain}")
-      |> AuthorizeSiteAccess.call(_all_allowed_roles = [:public])
+      |> AuthorizeSiteAccess.call(%{site_param: {:path, :domain}, allowed_roles: [:public]})
 
     refute conn.halted
     assert conn.assigns.site.id == site.id
@@ -232,7 +271,7 @@ defmodule PlausibleWeb.Plugs.AuthorizeSiteAccessTest do
       conn
       |> bypass_through(PlausibleWeb.Router)
       |> get("/#{site.domain}", %{"auth" => shared_link.slug})
-      |> AuthorizeSiteAccess.call(_all_allowed_roles = [:public])
+      |> AuthorizeSiteAccess.call(%{site_param: {:path, :domain}, allowed_roles: [:public]})
 
     refute conn.halted
     assert conn.assigns.site.id == site.id
@@ -246,7 +285,7 @@ defmodule PlausibleWeb.Plugs.AuthorizeSiteAccessTest do
       build_conn()
       |> bypass_through(PlausibleWeb.Router)
       |> get("/#{site.domain}", %{"auth" => shared_link.slug})
-      |> AuthorizeSiteAccess.call(_all_allowed_roles = [:public])
+      |> AuthorizeSiteAccess.call(%{site_param: {:path, :domain}, allowed_roles: [:public]})
 
     refute conn.halted
     assert conn.assigns.site.id == site.id

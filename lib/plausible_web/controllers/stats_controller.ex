@@ -48,7 +48,8 @@ defmodule PlausibleWeb.StatsController do
   alias Plausible.Stats.{Filters, Query}
   alias PlausibleWeb.Api
 
-  plug(PlausibleWeb.Plugs.AuthorizeSiteAccess when action in [:stats, :csv_export])
+  plug PlausibleWeb.Plugs.AuthorizeSiteAccess,
+       [site_param: {:path, :domain}] when action in [:stats, :csv_export]
 
   def stats(%{assigns: %{site: site}} = conn, _params) do
     site = Plausible.Repo.preload(site, :owner)
