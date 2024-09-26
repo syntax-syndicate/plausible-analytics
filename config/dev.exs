@@ -1,5 +1,10 @@
 import Config
 
+config :plausible, PlausibleWeb.InternalEndpoint,
+  check_origin: false,
+  server: true,
+  code_reloader: true
+
 config :plausible, PlausibleWeb.Endpoint,
   server: true,
   debug_errors: true,
