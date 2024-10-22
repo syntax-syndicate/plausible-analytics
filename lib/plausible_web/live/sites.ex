@@ -138,11 +138,10 @@ defmodule PlausibleWeb.Live.Sites do
           </h3>
           <div class="mt-2 text-sm text-yellow-700">
             <p>
-              To access the sites you own, you need to subscribe to a monthly or yearly payment plan.
+               the sites you own, you need to subscribe to a monthly or yearly payment plan.
               <.styled_link href={Routes.settings_path(PlausibleWeb.Endpoint, :subscription)}>
                 Upgrade now →
               </.styled_link>
-              ) %>
             </p>
           </div>
         </div>
