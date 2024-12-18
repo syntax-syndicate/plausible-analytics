@@ -4,6 +4,8 @@ defmodule PlausibleWeb.Api.Internal.SegmentsControllerTest do
   use Plausible.Teams.Test
 
   describe "GET /internal-api/:domain/segments with permissions overrides" do
+    @describetag :skip
+
     setup [:create_user, :log_in, :create_site]
 
     # adds unselectable segments to database

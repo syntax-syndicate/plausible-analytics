@@ -4,7 +4,7 @@ defmodule PlausibleWeb.Router do
   import Phoenix.LiveView.Router
 
   import PlausibleWeb.Api.Internal.SegmentsController,
-    only: [segments_feature_gate_plug: 2, segments_permissions_plug: 2]
+    only: [segments_feature_gate_plug: 2]
 
   pipeline :browser do
     plug :accepts, ["html"]
@@ -37,7 +37,6 @@ defmodule PlausibleWeb.Router do
 
   pipeline :segments do
     plug :segments_feature_gate_plug
-    plug :segments_permissions_plug
   end
 
   pipeline :api do

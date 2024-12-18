@@ -5,132 +5,31 @@ defmodule Plausible.Stats.Segments do
     - validating segment data
   """
 
-  @permissions [
-    :can_see_segment_data,
-    :can_create_personal_segments,
-    :can_list_personal_segments,
-    :can_edit_personal_segments,
-    :can_delete_personal_segments,
-    :can_create_site_segments,
-    :can_list_site_segments,
-    :can_edit_site_segments,
-    :can_delete_site_segments
-  ]
-
-  @type permission() :: unquote(Enum.reduce(@permissions, &{:|, [], [&1, &2]}))
-
-  @doc """
-  This function maps segment permissions to user roles.
-
-  ## Examples:
-      iex> get_role_permissions(:public)
-      [:can_list_site_segments]
-
-      iex> get_role_permissions(:viewer)
-      [
-        :can_list_site_segments,
-        :can_see_segment_data,
-        :can_create_personal_segments,
-        :can_list_personal_segments,
-        :can_edit_personal_segments,
-        :can_delete_personal_segments
-      ]
-
-      iex> get_role_permissions(:editor)
-      [
-        :can_list_site_segments,
-        :can_see_segment_data,
-        :can_create_personal_segments,
-        :can_list_personal_segments,
-        :can_edit_personal_segments,
-        :can_delete_personal_segments,
-        :can_create_site_segments,
-        :can_edit_site_segments,
-        :can_delete_site_segments
-      ]
-
-      iex> get_role_permissions(:admin) == get_role_permissions(:editor)
-      true
-
-      iex> get_role_permissions(:owner) == get_role_permissions(:editor)
-      true
-
-      iex> get_role_permissions(:super_admin) == get_role_permissions(:editor)
-      true
-  """
-  @spec get_role_permissions(PlausibleWeb.Plugs.AuthorizeSiteAccess.site_role()) ::
-          list(permission())
-
-  def get_role_permissions(role) do
-    case role do
-      :public ->
-        [
-          :can_list_site_segments
-        ]
-
-      :viewer ->
-        get_role_permissions(:public) ++
-          [
-            :can_see_segment_data,
-            :can_create_personal_segments,
-            :can_list_personal_segments,
-            :can_edit_personal_segments,
-            :can_delete_personal_segments
-          ]
-
-      :editor ->
-        get_role_permissions(:viewer) ++
-          [
-            :can_create_site_segments,
-            :can_edit_site_segments,
-            :can_delete_site_segments
-          ]
-
-      :admin ->
-        get_role_permissions(:editor)
-
-      :owner ->
-        get_role_permissions(:editor)
-
-      :super_admin ->
-        get_role_permissions(:editor)
-
-      _ ->
-        []
-    end
+  @spec can_view_segment_data?(Plausible.Site.t(), Plausible.Auth.User.t() | nil) :: boolean()
+  def can_view_segment_data?(site, user) do
+    Plausible.Teams.Memberships.site_member?(site, user)
   end
 
-  # this spec doesn't work / doesn't help
-  @spec get_permissions_whitelist(site :: Plausible.Site.t()) :: list(permission())
-
-  def get_permissions_whitelist(%Plausible.Site{} = site) do
-    common_permissions = [
-      :can_see_segment_data,
-      :can_create_personal_segments,
-      :can_list_personal_segments,
-      :can_edit_personal_segments,
-      :can_delete_personal_segments
-    ]
-
-    site_permissions = [
-      :can_create_site_segments,
-      :can_list_site_segments,
-      :can_edit_site_segments,
-      :can_delete_site_segments
-    ]
-
-    if Plausible.Billing.Feature.Props.check_availability(site.team) == :ok do
-      common_permissions ++ site_permissions
-    else
-      common_permissions
-    end
+  @spec has_personal_segments?(Plausible.Site.t(), Plausible.Auth.User.t() | nil) :: boolean()
+  def has_personal_segments?(site, user) do
+    Plausible.Teams.Memberships.site_member?(site, user)
   end
 
-  # this spec doesn't work / doesn't help
-  @spec has_permission(%{permission() => true}, permission()) :: any()
+  @spec has_site_segments?(Plausible.Site.t()) :: boolean()
+  def has_site_segments?(site) do
+    Plausible.Billing.Feature.Props.check_availability(site.team) == :ok
+  end
 
-  defguard has_permission(permissions, permission)
-           when is_map(permissions) and is_map_key(permissions, permission)
+  @spec can_manage_site_segments?(Plausible.Site.t(), Plausible.Auth.User.t() | nil) :: boolean()
+  def can_manage_site_segments?(site, user) do
+    valid_role? =
+      case Plausible.Teams.Memberships.site_role(site, user) do
+        {:ok, role} -> role in [:editor, :admin, :owner]
+        _ -> false
+      end
+
+    has_site_segments?(site) and valid_role?
+  end
 
   def validate_segment_data_if_exists(%Plausible.Site{} = _site, nil = _segment_data), do: :ok
 

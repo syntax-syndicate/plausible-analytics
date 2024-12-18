@@ -7,14 +7,13 @@ defmodule PlausibleWeb.Api.Internal.SegmentsController do
 
   import Plausible.Stats.Segments,
     only: [
-      has_permission: 2,
-      get_permissions_whitelist: 1,
-      get_role_permissions: 1,
+      has_personal_segments?: 2,
+      has_site_segments?: 1,
+      can_manage_site_segments?: 2,
+      can_view_segment_data?: 2,
       validate_segment_data_if_exists: 2,
       validate_segment_data: 2
     ]
-
-  @type permission() :: Plausible.Stats.Segments.permission()
 
   @fields_in_index_query [
     :id,
@@ -42,207 +41,112 @@ defmodule PlausibleWeb.Api.Internal.SegmentsController do
     end
   end
 
-  @doc """
-    This function Plug sets conn.assigns[:permissions] to a list like [:can_list_site_segments, ...].
-    Allowed permissions depend on the user role and the subscription level of the team that owns the site.
-  """
-  def segments_permissions_plug(%Plug.Conn{} = conn, _opts) do
-    permissions_whitelist = get_permissions_whitelist(conn.assigns.site)
+  def get_all_segments(conn, _params) do
+    site = conn.assigns.site
+    user = conn.assigns[:current_user]
 
-    permissions_list =
-      if Mix.env() in [:test, :ce_test] && conn.private[:test_override_permissions] do
-        conn.private[:test_override_permissions]
-      else
-        get_role_permissions(conn.assigns.site_role)
-        |> Enum.filter(fn permission -> permission in permissions_whitelist end)
-      end
-
-    permissions = permissions_list |> Enum.into(%{}, fn permission -> {permission, true} end)
-
-    conn
-    |> assign(
-      :permissions,
-      permissions
-    )
-  end
-
-  def get_all_segments(
-        %Plug.Conn{
-          assigns: %{
-            site: %{id: site_id},
-            current_user: %{id: user_id},
-            permissions: permissions
-          }
-        } = conn,
-        %{} = _params
-      )
-      when has_permission(permissions, :can_list_personal_segments) and
-             has_permission(permissions, :can_list_site_segments) do
-    result = Repo.all(get_mixed_segments_query(user_id, site_id, @fields_in_index_query))
-    json(conn, result)
-  end
-
-  def get_all_segments(
-        %Plug.Conn{
-          assigns: %{
-            site: %{id: site_id},
-            current_user: %{id: user_id},
-            permissions: permissions
-          }
-        } = conn,
-        %{} = _params
-      )
-      when has_permission(permissions, :can_list_personal_segments) do
-    result = Repo.all(get_personal_segments_only_query(user_id, site_id, @fields_in_index_query))
-    json(conn, result)
-  end
-
-  def get_all_segments(
-        %Plug.Conn{
-          assigns: %{site: %{id: site_id}, permissions: permissions}
-        } = conn,
-        %{} = _params
-      )
-      when has_permission(permissions, :can_list_site_segments) do
     publicly_visible_fields = @fields_in_index_query -- [:owner_id]
 
-    result =
-      Repo.all(get_site_segments_only_query(site_id, publicly_visible_fields))
+    query =
+      case {has_site_segments?(site), has_personal_segments?(site, user)} do
+        {true, true} ->
+          get_mixed_segments_query(user.id, site.id, @fields_in_index_query)
 
-    json(conn, result)
-  end
+        {true, false} ->
+          get_site_segments_only_query(site.id, publicly_visible_fields)
 
-  def get_all_segments(%Plug.Conn{} = conn, %{} = _params) do
-    H.not_enough_permissions(conn, "Not enough permissions to get segments")
-  end
+        {false, true} ->
+          get_personal_segments_only_query(user.id, site.id, @fields_in_index_query)
 
-  def get_segment(
-        %Plug.Conn{
-          assigns: %{
-            site: %{id: site_id},
-            current_user: %{id: user_id},
-            permissions: permissions
-          }
-        } = conn,
-        %{} = params
-      )
-      when has_permission(permissions, :can_see_segment_data) do
-    segment_id = normalize_segment_id_param(params["segment_id"])
+        _ ->
+          :no_permissions
+      end
 
-    result = get_one_segment(user_id, site_id, segment_id)
-
-    case result do
-      nil -> H.not_found(conn, "Segment not found with ID #{inspect(params["segment_id"])}")
-      %{} -> json(conn, result)
+    if query == :no_permissions do
+      H.not_enough_permissions(conn, "Not enough permissions to get segments")
+    else
+      json(conn, Repo.all(query))
     end
   end
 
-  def get_segment(%Plug.Conn{} = conn, %{} = _params) do
-    H.not_enough_permissions(conn, "Not enough permissions to get segment data")
+  def get_segment(conn, params) do
+    site = conn.assigns.site
+    user = conn.assigns[:current_user]
+
+    if can_view_segment_data?(site, user) do
+      segment_id = normalize_segment_id_param(params["segment_id"])
+
+      result = get_one_segment(user.id, site.id, segment_id)
+
+      case result do
+        nil -> H.not_found(conn, "Segment not found with ID #{inspect(params["segment_id"])}")
+        %{} -> json(conn, result)
+      end
+    else
+      H.not_enough_permissions(conn, "Not enough permissions to get segment data")
+    end
   end
 
-  def create_segment(
-        %Plug.Conn{
-          assigns: %{
-            site: %{id: _site_id},
-            current_user: %{id: _user_id},
-            permissions: permissions
-          }
-        } = conn,
-        %{"type" => "site"} = params
-      )
-      when has_permission(permissions, :can_create_site_segments),
-      do: do_insert_segment(conn, params)
-
-  def create_segment(
-        %Plug.Conn{
-          assigns: %{
-            site: %{
-              id: _site_id
-            },
-            current_user: %{id: _user_id},
-            permissions: permissions
-          }
-        } = conn,
-        %{"type" => "personal"} = params
-      )
-      when has_permission(permissions, :can_create_personal_segments),
-      do: do_insert_segment(conn, params)
-
-  def create_segment(conn, _params) do
-    H.not_enough_permissions(conn, "Not enough permissions to create segment")
+  def create_segment(conn, %{"type" => "site"} = params) do
+    if can_manage_site_segments?(conn.assigns.site, conn.assigns[:current_user]) do
+      do_insert_segment(conn, params)
+    else
+      H.not_enough_permissions(conn, "Not enough permissions to create segment")
+    end
   end
 
-  def update_segment(
-        %Plug.Conn{
-          assigns: %{
-            site: %{
-              id: site_id
-            },
-            current_user: %{id: user_id},
-            permissions: permissions
-          }
-        } =
-          conn,
-        %{} = params
-      ) do
+  def create_segment(conn, %{"type" => "personal"} = params) do
+    if has_personal_segments?(conn.assigns.site, conn.assigns[:current_user]) do
+      do_insert_segment(conn, params)
+    else
+      H.not_enough_permissions(conn, "Not enough permissions to create segment")
+    end
+  end
+
+  def update_segment(%{assigns: %{current_user: user}} = conn, params) do
+    site = conn.assigns.site
+
     segment_id = normalize_segment_id_param(params["segment_id"])
 
-    existing_segment = get_one_segment(user_id, site_id, segment_id)
+    existing_segment = get_one_segment(user.id, site.id, segment_id)
 
     cond do
       is_nil(existing_segment) ->
         H.not_found(conn, "Segment not found with ID #{inspect(params["segment_id"])}")
 
       existing_segment.type == :personal and
-        has_permission(permissions, :can_edit_personal_segments) and
+        has_personal_segments?(site, user) and
           params["type"] !== "site" ->
-        do_update_segment(conn, params, existing_segment, user_id)
+        do_update_segment(conn, params, existing_segment, user.id)
 
-      existing_segment.type == :site and
-          has_permission(permissions, :can_edit_site_segments) == true ->
-        do_update_segment(conn, params, existing_segment, user_id)
+      existing_segment.type == :site and can_manage_site_segments?(site, user) ->
+        do_update_segment(conn, params, existing_segment, user.id)
 
       true ->
         H.not_enough_permissions(conn, "Not enough permissions to edit segment")
     end
   end
 
-  def delete_segment(
-        %Plug.Conn{
-          assigns: %{
-            site: %{
-              id: site_id
-            },
-            current_user: %{id: user_id},
-            permissions: permissions
-          }
-        } =
-          conn,
-        %{} = params
-      ) do
+  def delete_segment(%{assigns: %{current_user: user}} = conn, params) do
+    site = conn.assigns.site
     segment_id = normalize_segment_id_param(params["segment_id"])
 
-    existing_segment = get_one_segment(user_id, site_id, segment_id)
+    existing_segment = get_one_segment(user.id, site.id, segment_id)
 
     cond do
       is_nil(existing_segment) ->
         H.not_found(conn, "Segment not found with ID #{inspect(params["segment_id"])}")
 
-      existing_segment.type == :personal and
-          has_permission(permissions, :can_delete_personal_segments) == true ->
+      existing_segment.type == :personal and has_personal_segments?(site, user) ->
         do_delete_segment(conn, existing_segment)
 
-      existing_segment.type == :site and
-          has_permission(permissions, :can_delete_site_segments) == true ->
+      existing_segment.type == :site and can_manage_site_segments?(site, user) ->
         do_delete_segment(conn, existing_segment)
 
       true ->
         H.not_enough_permissions(conn, "Not enough permissions to delete segment")
     end
   end
-
-  @spec get_site_segments_only_query(pos_integer(), list(atom())) :: Ecto.Query.t()
 
   defp get_site_segments_only_query(site_id, fields) do
     from(segment in Plausible.Segment,
@@ -253,9 +157,6 @@ defmodule PlausibleWeb.Api.Internal.SegmentsController do
     )
   end
 
-  @spec get_personal_segments_only_query(pos_integer(), pos_integer(), list(atom())) ::
-          Ecto.Query.t()
-
   defp get_personal_segments_only_query(user_id, site_id, fields) do
     from(segment in Plausible.Segment,
       select: ^fields,
@@ -264,9 +165,6 @@ defmodule PlausibleWeb.Api.Internal.SegmentsController do
       order_by: [desc: segment.updated_at, desc: segment.id]
     )
   end
-
-  @spec get_personal_segments_only_query(pos_integer(), pos_integer(), list(atom())) ::
-          Ecto.Query.t()
 
   defp get_mixed_segments_query(user_id, site_id, fields) do
     from(segment in Plausible.Segment,
@@ -277,8 +175,6 @@ defmodule PlausibleWeb.Api.Internal.SegmentsController do
       order_by: [desc: segment.updated_at, desc: segment.id]
     )
   end
-
-  @spec normalize_segment_id_param(any()) :: nil | pos_integer()
 
   defp normalize_segment_id_param(input) do
     case Integer.parse(input) do
@@ -302,20 +198,10 @@ defmodule PlausibleWeb.Api.Internal.SegmentsController do
     Repo.one(query)
   end
 
-  defp do_insert_segment(
-         %Plug.Conn{
-           assigns: %{
-             site:
-               %{
-                 id: site_id
-               } = site,
-             current_user: %{id: user_id}
-           }
-         } =
-           conn,
-         %{} = params
-       ) do
-    segment_definition = Map.merge(params, %{"site_id" => site_id, "owner_id" => user_id})
+  defp do_insert_segment(%{assigns: %{current_user: user}} = conn, params) do
+    site = conn.assigns.site
+
+    segment_definition = Map.merge(params, %{"site_id" => site.id, "owner_id" => user.id})
 
     with %{valid?: true} = changeset <-
            Plausible.Segment.changeset(
@@ -337,12 +223,7 @@ defmodule PlausibleWeb.Api.Internal.SegmentsController do
     end
   end
 
-  defp do_update_segment(
-         %Plug.Conn{} = conn,
-         %{} = params,
-         %Plausible.Segment{} = existing_segment,
-         owner_override
-       ) do
+  defp do_update_segment(conn, params, %Plausible.Segment{} = existing_segment, owner_override) do
     partial_segment_definition = Map.merge(params, %{"owner_id" => owner_override})
 
     with %{valid?: true} = changeset <-
