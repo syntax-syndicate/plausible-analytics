@@ -35,6 +35,10 @@ defmodule Plausible.Teams.Memberships do
     end
   end
 
+  def can_add_site?(team, user) do
+    team_role(team, user) in [:owner, :admin, :editor]
+  end
+
   def site_role(_site, nil), do: {:error, :not_a_member}
 
   def site_role(site, user) do

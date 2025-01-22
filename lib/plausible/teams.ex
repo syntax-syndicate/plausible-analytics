@@ -16,6 +16,15 @@ defmodule Plausible.Teams do
     not is_nil(team) and FunWithFlags.enabled?(:teams, for: team)
   end
 
+  @spec get(pos_integer() | binary()) :: Teams.Team.t() | nil
+  def get(team_id) when is_integer(team_id) do
+    Repo.get(Teams.Team, team_id)
+  end
+
+  def get(team_identifier) when is_binary(team_identifier) do
+    Repo.get_by(Teams.Team, identifier: team_identifier)
+  end
+
   @spec get!(pos_integer() | binary()) :: Teams.Team.t()
   def get!(team_id) when is_integer(team_id) do
     Repo.get!(Teams.Team, team_id)
@@ -111,27 +120,6 @@ defmodule Plausible.Teams do
   end
 
   @doc """
-  Create (when necessary) and load team relation for provided site.
-
-  Used for sync logic to work smoothly during transitional period.
-  """
-  def load_for_site(site) do
-    site = Repo.preload(site, [:team, :owner])
-
-    if site.team do
-      site
-    else
-      {:ok, team} = get_or_create(site.owner)
-
-      site
-      |> Ecto.Changeset.change()
-      |> Ecto.Changeset.put_assoc(:team, team)
-      |> Ecto.Changeset.force_change(:updated_at, site.updated_at)
-      |> Repo.update!()
-    end
-  end
-
-  @doc """
   Get or create user's team.
 
   If the user has no non-guest membership yet, an implicit "My Team" team is
@@ -163,14 +151,17 @@ defmodule Plausible.Teams do
         select: t,
         order_by: t.id
       )
-      |> Repo.one()
+      |> Repo.all()
 
     case result do
-      nil ->
+      [] ->
         {:error, :no_team}
 
-      team ->
+      [team] ->
         {:ok, team}
+
+      _teams ->
+        {:error, :multiple_teams}
     end
   end
 
@@ -311,11 +302,13 @@ defmodule Plausible.Teams do
     team_membership =
       team
       |> Teams.Membership.changeset(user, :owner)
+      |> Ecto.Changeset.put_change(:is_autocreated, true)
       |> Ecto.Changeset.put_change(:inserted_at, user.inserted_at)
       |> Ecto.Changeset.put_change(:updated_at, user.updated_at)
       |> Repo.insert!(
         on_conflict: :nothing,
-        conflict_target: {:unsafe_fragment, "(user_id) WHERE role != 'guest'"}
+        conflict_target:
+          {:unsafe_fragment, "(user_id) WHERE role = 'owner' and is_autocreated = true"}
       )
 
     if team_membership.id do

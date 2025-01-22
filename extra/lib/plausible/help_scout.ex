@@ -90,6 +90,11 @@ defmodule Plausible.HelpScout do
             plan = Billing.Plans.get_subscription_plan(team.subscription)
             {team, team.subscription, plan}
 
+          # NOTE: a choice of teams should be presented
+          # instead, probably
+          {:error, :multiple_teams} ->
+            {nil, nil, nil}
+
           {:error, :no_team} ->
             {nil, nil, nil}
         end

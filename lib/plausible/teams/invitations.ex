@@ -134,7 +134,7 @@ defmodule Plausible.Teams.Invitations do
   end
 
   def invite(%Plausible.Site{} = site, invitee_email, role, inviter) do
-    site = Teams.load_for_site(site)
+    site = Repo.preload(site, :team)
 
     if role == :owner do
       create_site_transfer(
@@ -179,22 +179,20 @@ defmodule Plausible.Teams.Invitations do
     )
   end
 
-  def accept_site_transfer(site_transfer, user) do
+  def accept_site_transfer(site_transfer, new_team) do
     {:ok, _} =
       Repo.transaction(fn ->
-        {:ok, team} = Teams.get_or_create(user)
-        :ok = transfer_site_ownership(site_transfer.site, team, NaiveDateTime.utc_now(:second))
+        :ok = transfer_site_ownership(site_transfer.site, new_team, NaiveDateTime.utc_now(:second))
         Repo.delete_all(from st in Teams.SiteTransfer, where: st.id == ^site_transfer.id)
       end)
 
     :ok
   end
 
-  def transfer_site(site, user) do
+  def transfer_site(site, new_team) do
     {:ok, _} =
       Repo.transaction(fn ->
-        {:ok, team} = Teams.get_or_create(user)
-        :ok = transfer_site_ownership(site, team, NaiveDateTime.utc_now(:second))
+        :ok = transfer_site_ownership(site, new_team, NaiveDateTime.utc_now(:second))
       end)
 
     :ok

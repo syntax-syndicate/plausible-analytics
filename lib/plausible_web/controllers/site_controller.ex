@@ -46,12 +46,37 @@ defmodule PlausibleWeb.SiteController do
             )
         )
 
+      {:error, :permission_denied} ->
+        conn
+        |> put_flash(:error, "You are not permitted to add sites in that team")
+        |> render("new.html",
+          changeset: Plausible.Site.changeset(%Plausible.Site{}),
+          first_site?: first_site?,
+          site_limit: limit,
+          site_limit_exceeded?: true,
+          team_picker: false,
+          flow: flow,
+          form_submit_url: "/sites?flow=#{flow}"
+        )
+
       {:error, _, {:over_limit, limit}, _} ->
         render(conn, "new.html",
           changeset: Plausible.Site.changeset(%Plausible.Site{}),
           first_site?: first_site?,
           site_limit: limit,
           site_limit_exceeded?: true,
+          team_picker: false,
+          flow: flow,
+          form_submit_url: "/sites?flow=#{flow}"
+        )
+
+      {:error, _, :multiple_teams, _} ->
+        render(conn, "new.html",
+          changeset: Plausible.Site.changeset(%Plausible.Site{}, site_params),
+          first_site?: first_site?,
+          site_limit: Plausible.Teams.Billing.site_limit(team),
+          site_limit_exceeded?: false,
+          team_picker: true,
           flow: flow,
           form_submit_url: "/sites?flow=#{flow}"
         )
@@ -62,6 +87,7 @@ defmodule PlausibleWeb.SiteController do
           first_site?: first_site?,
           site_limit: Plausible.Teams.Billing.site_limit(team),
           site_limit_exceeded?: false,
+          team_picker: false,
           flow: flow,
           form_submit_url: "/sites?flow=#{flow}"
         )
