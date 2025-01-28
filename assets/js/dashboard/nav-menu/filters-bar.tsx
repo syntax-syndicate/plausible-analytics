@@ -12,6 +12,9 @@ import { AppliedFilterPillsList, PILL_X_GAP } from './filter-pills-list'
 import { useQueryContext } from '../query-context'
 import { AppNavigationLink } from '../navigation/use-app-navigate'
 import { BUFFER_FOR_SHADOW_PX } from './filter-pill'
+import { isSegmentFilter } from '../filtering/segments'
+import { useSegmentExpandedContext } from '../segments/segment-expanded-context'
+import { useSiteContext } from '../site-context'
 
 const BUFFER_RIGHT_PX = 16 - BUFFER_FOR_SHADOW_PX - PILL_X_GAP
 const BUFFER_LEFT_PX = 16 - BUFFER_FOR_SHADOW_PX
@@ -94,12 +97,13 @@ interface FiltersBarProps {
 }
 
 export const FiltersBar = ({ elements }: FiltersBarProps) => {
+  const site = useSiteContext()
   const containerRef = useRef<HTMLDivElement>(null)
   const pillsRef = useRef<HTMLDivElement>(null)
   const seeMoreRef = useRef<HTMLDivElement>(null)
   const [visibility, setVisibility] = useState<null | VisibilityState>(null)
   const { query } = useQueryContext()
-
+  const { expandedSegment } = useSegmentExpandedContext()
   const [opened, setOpened] = useState(false)
 
   useEffect(() => {
@@ -154,7 +158,9 @@ export const FiltersBar = ({ elements }: FiltersBarProps) => {
     return <div className="w-4" />
   }
 
-  const canClear = query.filters.length > 1
+  const moreThanOnePill = query.filters.length > 1
+  const canClear = moreThanOnePill
+  const canSaveAsSegment = moreThanOnePill && !expandedSegment
 
   return (
     <div
@@ -218,7 +224,16 @@ export const FiltersBar = ({ elements }: FiltersBarProps) => {
                     }}
                   />
                 )}
-                {canClear && <ClearAction />}
+                {canClear && <ClearAll />}
+                {!!site.flags.saved_segments && canSaveAsSegment && (
+                  <SaveSelectionAsSegment
+                    disabled={
+                      query.filters.some(isSegmentFilter)
+                        ? { reason: "Can't save segment's containing segments" }
+                        : undefined
+                    }
+                  />
+                )}
               </DropdownMenuWrapper>
             ) : null}
           </ToggleDropdownButton>
@@ -227,7 +242,7 @@ export const FiltersBar = ({ elements }: FiltersBarProps) => {
   )
 }
 
-const ClearAction = () => (
+const ClearAll = () => (
   <AppNavigationLink
     title="Clear all filters"
     className={classNames(
@@ -240,5 +255,24 @@ const ClearAction = () => (
     })}
   >
     Clear all filters
+  </AppNavigationLink>
+)
+
+const SaveSelectionAsSegment = ({
+  disabled
+}: {
+  disabled?: { reason: string }
+}) => (
+  <AppNavigationLink
+    title="Clear all filters"
+    className={classNames(
+      'self-start button h-9 !px-3 !py-2 flex whitespace-nowrap',
+      disabled && 'cursor-not-allowed !bg-gray-300 dark:!bg-gray-950'
+    )}
+    aria-disabled={disabled ? true : undefined}
+    search={(s) => s}
+    state={disabled ? undefined : { expandedSegment: null, modal: 'create' }}
+  >
+    Save as segment
   </AppNavigationLink>
 )

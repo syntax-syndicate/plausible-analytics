@@ -173,3 +173,54 @@ export const DropdownNavigationLink = ({
     {children}
   </AppNavigationLink>
 )
+
+export const SplitButton = forwardRef<
+  HTMLDivElement,
+  {
+    className?: string
+    leftOption: ReactNode
+    children: ReactNode
+    onClick: () => void
+    dropdownContainerProps: DetailedHTMLProps<
+      HTMLAttributes<HTMLButtonElement>,
+      HTMLButtonElement
+    >
+  }
+>(
+  (
+    {
+      className,
+      leftOption,
+      children,
+      onClick,
+      dropdownContainerProps
+      // ...props
+    },
+    ref
+  ) => {
+    const sharedButtonClass = 'flex items-stretch text-sm leading-tight h-9'
+
+    return (
+      <div className={className} ref={ref}>
+        <div className={classNames(sharedButtonClass)}>
+          {leftOption}
+          <button
+            className={classNames(
+              'transition text-md font-medium rounded-md focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500',
+              'bg-indigo-600 hover:bg-indigo-700 text-white border-transparent',
+              'px-2 py-2',
+              'rounded-l-none',
+              'border-l border-indigo-800'
+            )}
+            onClick={onClick}
+            {...dropdownContainerProps}
+            aria-haspopup="true"
+          >
+            <ChevronDownIcon className="block w-4 h-4" />
+          </button>
+        </div>
+        {children}
+      </div>
+    )
+  }
+)
