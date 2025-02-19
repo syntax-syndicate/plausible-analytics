@@ -11,10 +11,8 @@ defmodule Plausible.Session.CacheStore do
   def on_event(event, session_attributes, prev_user_id, buffer_insert \\ &WriteBuffer.insert/1) do
     lock_requested_at = System.monotonic_time()
 
-    Plausible.Cache.Adapter.with_lock(
-      :sessions,
+    Locks.with_lock(
       {event.site_id, event.user_id},
-      @lock_timeout,
       fn ->
         lock_duration = System.monotonic_time() - lock_requested_at
         :telemetry.execute(@lock_telemetry_event, %{duration: lock_duration}, %{})
