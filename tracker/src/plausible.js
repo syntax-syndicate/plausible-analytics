@@ -55,9 +55,13 @@
   var engagementCooldown = false
 
   // Timestamp indicating when this particular page last became visible.
-  // Reset during pageviews, set to null when page is closed.
+  // Set to null when page becomes hidden. Set to `Date.now()` when page
+  // becomes visible.
   var runningEnagementStart
-  // When page is hidden, this 'engaged' time is saved to this variable
+  // When page is hidden but the engagement event does not get sent (due
+  // to page being visible for less than 1s), this 'engaged' time is still
+  // saved to this variable and added to the next engagement event. Reset
+  // to 0 when engagement event is sent.
   var currentEngagementTime
 
   function getDocumentHeight() {
@@ -107,17 +111,16 @@
   })
 
   function triggerEngagement() {
-    var engagementTime
-    if (runningEnagementStart) {
-      engagementTime = currentEngagementTime + (Date.now() - runningEnagementStart)
-    } else {
-      engagementTime = currentEngagementTime
-    }
+    var runningEngagementTime = Date.now() - runningEnagementStart
+
+    currentEngagementTime += runningEngagementTime
 
     // Avoid sending redundant engagement events if user has not scrolled the page and not engaged for at least 1 second
     // Note that `currentEngagementMaxScrollDepth` default of -1 ensures that at least one engagement event is sent
     // per pageview.
-    if (!engagementCooldown && !currentEngagementIgnored && (currentEngagementMaxScrollDepth < maxScrollDepthPx || engagementTime > 1000)) {
+    var isRedundant = currentEngagementMaxScrollDepth >= maxScrollDepthPx && runningEngagementTime < 1000
+
+    if (!engagementCooldown && !currentEngagementIgnored && !isRedundant) {
       currentEngagementMaxScrollDepth = maxScrollDepthPx
       setTimeout(function () {engagementCooldown = false}, 300)
 
@@ -127,10 +130,9 @@
         d: dataDomain,
         u: currentEngagementURL,
         p: currentEngagementProps,
-        e: engagementTime
+        e: currentEngagementTime
       }
 
-      runningEnagementStart = (document.visibilityState === 'hidden') ? Date.now() : null
       currentEngagementTime = 0
 
       {{#if hash}}
@@ -146,10 +148,6 @@
       // Only register visibilitychange listener only after initial page load and pageview
       document.addEventListener('visibilitychange', function() {
         if (document.visibilityState === 'hidden') {
-          // Tab went back to background. Save the engaged time so far
-          currentEngagementTime += (Date.now() - runningEnagementStart)
-          runningEnagementStart = null
-
           triggerEngagement()
         } else {
           runningEnagementStart = Date.now()

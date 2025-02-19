@@ -247,7 +247,7 @@ test.describe('engagement events', () => {
       mockRequestTimeout: 100
     })
 
-    await page.waitForTimeout(500)
+    await page.waitForTimeout(1000)
 
     const [request2] = await expectPlausibleInAction(page, {
       action: () => hideAndShowCurrentTab(page, {delay: 3000}),
@@ -255,7 +255,7 @@ test.describe('engagement events', () => {
     })
 
     // Sum of both visibility times
-    expect(request2.e).toBeGreaterThan(1000)
-    expect(request2.e).toBeLessThan(1500)
+    expect(request2.e).toBeGreaterThan(1500)
+    expect(request2.e).toBeLessThan(2000)
   })
 })
