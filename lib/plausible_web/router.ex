@@ -62,6 +62,9 @@ defmodule PlausibleWeb.Router do
     plug :accepts, ["json"]
   end
 
+  pipeline :segments_endpoints,
+    do: plug(PlausibleWeb.Plugs.FeatureFlagCheckPlug, [:saved_segments])
+
   on_ee do
     pipeline :flags do
       plug :accepts, ["html"]
@@ -181,6 +184,17 @@ defmodule PlausibleWeb.Router do
     end
   end
 
+  # must be higher than the internal /api/:domain/segments/..., otherwise "v1" is read into :domain key
+  scope "/api/v1/segments", PlausibleWeb.Api, assigns: %{api_scope: "stats:read:*"} do
+    pipe_through [:public_api, PlausibleWeb.Plugs.AuthorizePublicAPI, :segments_endpoints]
+
+    get "/", Internal.SegmentsController, :index
+    post "/", Internal.SegmentsController, :create
+    get "/:segment_id", Internal.SegmentsController, :get
+    patch "/:segment_id", Internal.SegmentsController, :update
+    delete "/:segment_id", Internal.SegmentsController, :delete
+  end
+
   scope "/api" do
     pipe_through :internal_stats_api
 
@@ -221,9 +235,6 @@ defmodule PlausibleWeb.Router do
     end
 
     scope "/:domain/segments", PlausibleWeb.Api.Internal do
-      pipeline :segments_endpoints,
-        do: plug(PlausibleWeb.Plugs.FeatureFlagCheckPlug, [:saved_segments])
-
       pipe_through :segments_endpoints
       get "/", SegmentsController, :index
       post "/", SegmentsController, :create

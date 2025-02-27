@@ -63,10 +63,11 @@ defmodule PlausibleWeb.Plugs.AuthorizePublicAPI do
   defp verify_by_scope(conn, api_key, "stats:read:" <> _ = scope) do
     with :ok <- check_scope(api_key, scope),
          {:ok, site} <- find_site(conn.params["site_id"]),
-         :ok <- verify_site_access(api_key, site) do
+         site <- Repo.preload(site, :team),
+         {:ok, site_role} <- verify_site_access(api_key, site) do
       Plausible.OpenTelemetry.add_site_attributes(site)
       site = Plausible.Repo.preload(site, :completed_imports)
-      {:ok, assign(conn, :site, site)}
+      {:ok, conn |> assign(:site, site) |> assign(:site_role, site_role)}
     end
   end
 
@@ -134,14 +135,14 @@ defmodule PlausibleWeb.Plugs.AuthorizePublicAPI do
   end
 
   defp verify_site_access(api_key, site) do
-    team = Repo.preload(site, :team).team
-
-    is_member? = Plausible.Teams.Memberships.site_member?(site, api_key.user)
+    team = site.team
+    site_role = Plausible.Teams.Memberships.site_role(site, api_key.user)
+    is_member? = Plausible.Teams.Memberships.site_member?(site_role)
     is_super_admin? = Auth.is_super_admin?(api_key.user_id)
 
     cond do
       is_super_admin? ->
-        :ok
+        {:ok, if(is_member?, do: elem(site_role, 1), else: :super_admin)}
 
       Sites.locked?(site) ->
         {:error, :site_locked}
@@ -150,7 +151,7 @@ defmodule PlausibleWeb.Plugs.AuthorizePublicAPI do
         {:error, :upgrade_required}
 
       is_member? ->
-        :ok
+        {:ok, elem(site_role, 1)}
 
       true ->
         {:error, :invalid_api_key}

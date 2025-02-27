@@ -86,11 +86,15 @@ defmodule Plausible.Teams.Memberships do
     end
   end
 
-  def site_member?(site, user) do
-    case site_role(site, user) do
+  def site_member?(site_role) do
+    case site_role do
       {:ok, _} -> true
       _ -> false
     end
+  end
+
+  def site_member?(site, user) do
+    site_member?(site_role(site, user))
   end
 
   def has_admin_access?(site, user) do
