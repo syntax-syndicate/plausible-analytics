@@ -8,13 +8,13 @@
     <meta name="project" content="Plausible v0.0.1">
 
 
-    <title>PlausibleWeb.Plugs.FeatureFlagCheckPlug — Plausible v0.0.1</title>
+    <title>Plausible.DataMigration.BackfillTeamsHourlyRequestLimit — Plausible v0.0.1</title>
     <link rel="stylesheet" href="dist/html-elixir-P45HOAC7.css" />
 
 
     <script src="dist/handlebars.runtime-NWIB6V2M.js"></script>
     <script src="dist/handlebars.templates-K7URE6B4.js"></script>
-    <script src="dist/sidebar_items-326EF0D6.js"></script>
+    <script src="dist/sidebar_items-4C0AB7BD.js"></script>
     <script src="docs_config.js"></script>
     <script async src="dist/html-PVRIOB7F.js"></script>
 
@@ -126,21 +126,20 @@ Pages
 <div id="top-content">
   <h1>
 
-      <a href="https://github.com/plausible/analytics/blob/main/lib/plausible_web/plugs/feature_flag_check_plug.ex#L1" title="View Source" class="icon-action" rel="help">
+      <a href="https://github.com/plausible/analytics/blob/main/lib/plausible/data_migration/backfill_teams_hourly_api_request_limit.ex#L1" title="View Source" class="icon-action" rel="help">
         <i class="ri-code-s-slash-line" aria-hidden="true"></i>
         <span class="sr-only">View Source</span>
       </a>
 
-    <span translate="no">PlausibleWeb.Plugs.FeatureFlagCheckPlug</span> 
+    <span translate="no">Plausible.DataMigration.BackfillTeamsHourlyRequestLimit</span> 
     <small class="app-vsn" translate="no">(Plausible v0.0.1)</small>
 
   </h1>
 
 
     <section id="moduledoc">
-<p>plug(PlausibleWeb.Plugs.FeatureFlagCheckPlug, [:flag_foo, :flag_bar])
-to halt any API connections with 404 where conn.assigns.current_user or conn.assigns.site
-don't have both feature flags true.</p>
+<p>!!!WARNING!!!: This script is used in migrations. Please take special care
+when altering it.</p><p>Backfill <code class="inline">Team.hourly_api_request_limit</code>.</p>
     </section>
 
 </div>
@@ -159,7 +158,7 @@ don't have both feature flags true.</p>
 
     <div class="summary-row">
       <div class="summary-signature">
-        <a href="#call/2" data-no-tooltip translate="no">call(conn, flags)</a>
+        <a href="#log/1" data-no-tooltip translate="no">log(msg)</a>
 
       </div>
 
@@ -167,7 +166,7 @@ don't have both feature flags true.</p>
 
     <div class="summary-row">
       <div class="summary-signature">
-        <a href="#init/1" data-no-tooltip translate="no">init(feature_flags)</a>
+        <a href="#run/1" data-no-tooltip translate="no">run(opts \\ [])</a>
 
       </div>
 
@@ -186,15 +185,15 @@ don't have both feature flags true.</p>
       <span class="text">Functions</span>
     </h1>
     <div class="functions-list">
-<section class="detail" id="call/2">
+<section class="detail" id="log/1">
 
   <div class="detail-header">
-    <a href="#call/2" class="detail-link" data-no-tooltip aria-label="Link to this function">
+    <a href="#log/1" class="detail-link" data-no-tooltip aria-label="Link to this function">
       <i class="ri-link-m" aria-hidden="true"></i>
     </a>
-    <h1 class="signature" translate="no">call(conn, flags)</h1>
+    <h1 class="signature" translate="no">log(msg)</h1>
 
-      <a href="https://github.com/plausible/analytics/blob/main/lib/plausible_web/plugs/feature_flag_check_plug.ex#L14" class="icon-action" rel="help" aria-label="View Source">
+      <a href="https://github.com/plausible/analytics/blob/main/lib/plausible/data_migration/backfill_teams_hourly_api_request_limit.ex#L51" class="icon-action" rel="help" aria-label="View Source">
        <i class="ri-code-s-slash-line" aria-hidden="true"></i>
      </a>
 
@@ -206,15 +205,17 @@ don't have both feature flags true.</p>
 
   </section>
 </section>
-<section class="detail" id="init/1">
+<section class="detail" id="run/1">
+
+    <span id="run/0"></span>
 
   <div class="detail-header">
-    <a href="#init/1" class="detail-link" data-no-tooltip aria-label="Link to this function">
+    <a href="#run/1" class="detail-link" data-no-tooltip aria-label="Link to this function">
       <i class="ri-link-m" aria-hidden="true"></i>
     </a>
-    <h1 class="signature" translate="no">init(feature_flags)</h1>
+    <h1 class="signature" translate="no">run(opts \\ [])</h1>
 
-      <a href="https://github.com/plausible/analytics/blob/main/lib/plausible_web/plugs/feature_flag_check_plug.ex#L7" class="icon-action" rel="help" aria-label="View Source">
+      <a href="https://github.com/plausible/analytics/blob/main/lib/plausible/data_migration/backfill_teams_hourly_api_request_limit.ex#L15" class="icon-action" rel="help" aria-label="View Source">
        <i class="ri-code-s-slash-line" aria-hidden="true"></i>
      </a>
 

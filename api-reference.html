@@ -14,7 +14,7 @@
 
     <script src="dist/handlebars.runtime-NWIB6V2M.js"></script>
     <script src="dist/handlebars.templates-K7URE6B4.js"></script>
-    <script src="dist/sidebar_items-326EF0D6.js"></script>
+    <script src="dist/sidebar_items-4C0AB7BD.js"></script>
     <script src="docs_config.js"></script>
     <script async src="dist/html-PVRIOB7F.js"></script>
 
@@ -684,6 +684,16 @@ run via remote shell or otherwise (TBD).</p></div>
 </div>
 <div class="summary-row">
   <div class="summary-signature">
+    <a href="Plausible.DataMigration.BackfillTeamsHourlyRequestLimit.html" translate="no">Plausible.DataMigration.BackfillTeamsHourlyRequestLimit</a>
+
+  </div>
+
+    <div class="summary-synopsis"><p>!!!WARNING!!!: This script is used in migrations. Please take special care
+when altering it.</p></div>
+
+</div>
+<div class="summary-row">
+  <div class="summary-signature">
     <a href="Plausible.DataMigration.CleanUpDemoSiteReferrerSource.html" translate="no">Plausible.DataMigration.CleanUpDemoSiteReferrerSource</a>
 
   </div>
@@ -1314,6 +1324,16 @@ Tokens are stored hashed and require a description.</p></div>
 
     <div class="summary-synopsis"><p>Context module for Plugins API Tokens.
 Exposes high-level operation for token-based authentication flows.</p></div>
+
+</div>
+<div class="summary-row">
+  <div class="summary-signature">
+    <a href="Plausible.Plugs.AuthorizeTeamAccess.html" translate="no">Plausible.Plugs.AuthorizeTeamAccess</a>
+
+  </div>
+
+    <div class="summary-synopsis"><p>Enforce team role to be within the declared set.
+<code class="inline">:current_team_role</code> is assumed to be populated by <a href="PlausibleWeb.AuthPlug.html"><code class="inline">PlausibleWeb.AuthPlug</code></a>.</p></div>
 
 </div>
 <div class="summary-row">
@@ -1963,8 +1983,8 @@ for dimensions, filters and metrics used in import table queries</p></div>
 
   </div>
 
-    <div class="summary-synopsis"><p>Calculation methods for legacy time_on_page metric. Note the metric
-has its own limitations and quirks.</p></div>
+    <div class="summary-synopsis"><p>Calculation methods for <code class="inline">legacy</code> time_on_page metric. <code class="inline">Legacy</code> calculation methods
+are used when site does not have engagement data for the requested dates.</p></div>
 
 </div>
 <div class="summary-row">
@@ -2070,15 +2090,6 @@ for dimensions and metrics used in query SELECT statement.</p></div>
 </div>
 <div class="summary-row">
   <div class="summary-signature">
-    <a href="Plausible.Stats.ScrollDepth.html" translate="no">Plausible.Stats.ScrollDepth</a>
-
-  </div>
-
-    <div class="summary-synopsis"><p>Module to check whether the scroll depth metric is available and visible for a site.</p></div>
-
-</div>
-<div class="summary-row">
-  <div class="summary-signature">
     <a href="Plausible.Stats.TableDecider.html" translate="no">Plausible.Stats.TableDecider</a>
 
   </div>
@@ -2094,6 +2105,15 @@ and metrics, with the purpose of reducing the number of queries and JOINs needed
   </div>
 
     <div class="summary-synopsis"><p>Collection of functions to work with time in queries.</p></div>
+
+</div>
+<div class="summary-row">
+  <div class="summary-signature">
+    <a href="Plausible.Stats.TimeOnPage.html" translate="no">Plausible.Stats.TimeOnPage</a>
+
+  </div>
+
+    <div class="summary-synopsis"><p>Module to check whether the new time on page metric is available.</p></div>
 
 </div>
 <div class="summary-row">
@@ -3834,17 +3854,6 @@ Plugins API Tokens lookup.</p></div>
   containing a readable support hash presented to the users.
   To be used in the user-facing APIs, so that we don't leak internal
   server errors.</p></div>
-
-</div>
-<div class="summary-row">
-  <div class="summary-signature">
-    <a href="PlausibleWeb.Plugs.FeatureFlagCheckPlug.html" translate="no">PlausibleWeb.Plugs.FeatureFlagCheckPlug</a>
-
-  </div>
-
-    <div class="summary-synopsis"><p>plug(PlausibleWeb.Plugs.FeatureFlagCheckPlug, [:flag_foo, :flag_bar])
-to halt any API connections with 404 where conn.assigns.current_user or conn.assigns.site
-don't have both feature flags true.</p></div>
 
 </div>
 <div class="summary-row">
